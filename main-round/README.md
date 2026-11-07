@@ -1,4 +1,4 @@
-# House Edge entry: GRU ensemble + joint Bayesian rule model
+# House Edge entry: team blend (GRU ensemble + joint Bayesian rule model + teammate Bayesian filter)
 
 - Round: main · Season ID: 5fffdc4d0c700bbf61c3f911
 - Environment: `python` image (Python 3.13). Extra package pinned in `requirements.txt` (numpy only).
@@ -18,6 +18,16 @@ python predict.py --data /data --out /output/submission.csv
 4. The script writes `p_0 = 1 - P(win)` and `p_x = P(win) * P(size x | win)`.
 
 The run is deterministic, with no random numbers at prediction time.
+
+## Team blend
+
+`predict.py` also runs the teammates' Bayesian filter models in `partner*/`. The code and `model.json` there are unchanged from the teammate's own entry; see `partner/PARTNER_README.md`. Their win chance is mixed into ours with the weights in `PARTNERS` at the top of `predict.py`, and the payout-size distribution comes from our rule model. The weights were chosen on public validation:
+
+| entry | validation points / 60 |
+| --- | --- |
+| our GRU + rule model alone | 58.33 |
+| teammate filter alone (`partner/`) | 58.08 |
+| blend, 70% ours and 30% partner win chance | **58.41** |
 
 ## Rule model (found in the public data)
 

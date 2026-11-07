@@ -14,6 +14,31 @@ from houseedge.joint_model import high_probability, structured_win
 import json
 
 HERE = Path(__file__).resolve().parent
+# Teammates' models: (folder, share of the final win chance). Our GRU+rule model keeps the rest.
+PARTNERS = [("partner", 0.3)]
+
+
+def partner_win(folder, data, split, qids):
+    """Win chance from a teammate's joint Bayesian filter (unchanged code + model.json)."""
+    import sys, json as _json
+    for name in list(sys.modules):   # isolate partners that reuse module names
+        if name.split(".")[0] in ("adaptive_model", "joint_model", "partial_history", "population_em",
+                                  "state_model", "slot_forecasting") or name.endswith("_predict"):
+            del sys.modules[name]
+    sys.path[:] = [x for x in sys.path if not x.startswith(str(HERE / "partner"))]
+    sys.path.insert(0, str(HERE / folder))
+    from adaptive_model import prepare
+    from slot_forecasting.io import load_inputs
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"{folder}_predict", HERE / folder / "partner_predict.py")
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    model = _json.loads((HERE / folder / "model.json").read_text())
+    meta = _json.loads((Path(data) / "metadata.json").read_text())
+    if any(model[k] != meta[k] for k in ("round", "season_id")):
+        raise SystemExit("Partner model was fitted for a different round/season")
+    q, h = load_inputs(Path(data) / split)
+    p = mod.predict_items(prepare(q, h), model)
+    return np.array([1.0 - p[x][0] for x in qids])
 
 
 def main():
@@ -52,6 +77,8 @@ def main():
                 c_hi, c_lo = cfg["centers"][key]
                 sw = structured_win(Y[i], int(cuts[i]), lo, hi, rules, thr, c_hi, c_lo, cfg["kappa_win"])
                 win[i] = cfg["short_blend"] * sw + (1 - cfg["short_blend"]) * win[i]
+        own = sum(w for _, w in PARTNERS)
+        win = (1 - own) * win + sum(w * partner_win(f, a.data, a.split, qids) for f, w in PARTNERS)
         P = np.column_stack([1.0 - win, win[:, None] * sizes])
     if P is None:
         raise SystemExit("models/rules.json is required")
