@@ -17,9 +17,21 @@ HERE = Path(__file__).resolve().parent
 # Teammates' models and a two-state gate (chosen by 4-fold episode cross-validation on public validation).
 # A query is "low state" when the average of all models' win chance is below the machine type's
 # threshold; Bayesian filters are better there, our GRU ensemble is better in the high-win state.
-PARTNERS = ["partner"]
-GATE_THRESHOLD = {"balanced": 0.7372, "jackpot": 0.0241, "steady": 0.9087}   # type medians on validation
-WEIGHTS = {"low": [0.3, 0.7], "high": [0.8, 0.2]}   # [ours, partner...]
+PARTNERS = ["partner", "partner2"]
+GATE_THRESHOLD = {"balanced": 0.7514, "jackpot": 0.0230, "steady": 0.9141}   # type medians on validation
+# [ours, partner, partner2], applied to log-odds; separate weights for short histories (< short_obs observed ticks)
+WEIGHTS = {"low": [0.4, 0.2, 0.4], "high": [0.7, 0.0, 0.3],
+           "short_low": [0.0, 0.6, 0.4], "short_high": [0.8, 0.2, 0.0]}
+
+
+def subprocess_win(folder, data, split, qids):
+    """Teammate model with its own predict.py CLI, run unchanged in a separate process."""
+    import os, subprocess, sys, tempfile
+    out = Path(tempfile.mkdtemp(prefix=f"{folder}-")) / "pred.csv"
+    subprocess.run([sys.executable, str(HERE / folder / "predict.py"), "--data", str(data),
+                    "--split", split, "--out", str(out)], check=True, cwd=str(HERE / folder))
+    rows = {r["query_id"]: float(r["p_0"]) for r in read_csv(out)}
+    return np.array([1.0 - rows[q] for q in qids])
 
 
 def partner_win(folder, data, split, qids):
@@ -81,10 +93,13 @@ def main():
                 c_hi, c_lo = cfg["centers"][key]
                 sw = structured_win(Y[i], int(cuts[i]), lo, hi, rules, thr, c_hi, c_lo, cfg["kappa_win"])
                 win[i] = cfg["short_blend"] * sw + (1 - cfg["short_blend"]) * win[i]
-        allw = np.stack([win] + [partner_win(f, a.data, a.split, qids) for f in PARTNERS], 1)
+        allw = np.stack([win] + [(subprocess_win if (HERE / f / "model6.py").exists() else partner_win)(f, a.data, a.split, qids)
+                                 for f in PARTNERS], 1)
         low = allw.mean(1) < np.array([GATE_THRESHOLD[t] for t in types])
-        wts = np.where(low[:, None], np.array(WEIGHTS["low"]), np.array(WEIGHTS["high"]))
-        win = (allw * wts).sum(1)
+        is_short = np.array([(Y[i, :cuts[i]] >= 0).sum() < cfg["short_obs"] for i in range(len(qids))])
+        wts = np.array([WEIGHTS[("short_" if s else "") + ("low" if l else "high")] for s, l in zip(is_short, low)])
+        cl = np.clip(allw, 1e-6, 1 - 1e-6)
+        win = 1.0 / (1.0 + np.exp(-(np.log(cl / (1 - cl)) * wts).sum(1)))
         P = np.column_stack([1.0 - win, win[:, None] * sizes])
     if P is None:
         raise SystemExit("models/rules.json is required")

@@ -1,8 +1,8 @@
-# House Edge entry: team blend (GRU ensemble + joint Bayesian rule model + teammate Bayesian filter)
+# House Edge entry: team blend (GRU ensemble + joint Bayesian rule model + two teammate Bayesian models)
 
 - Round: main · Season ID: 5fffdc4d0c700bbf61c3f911
-- Environment: `python` image (Python 3.13). Extra package pinned in `requirements.txt` (numpy only).
-- Hardware: CPU only. Prediction takes about 10 to 15 minutes on 2 cores, with peak RAM under 4 GB. Nothing is trained during the rerun.
+- Environment: `python` image (Python 3.13). Extra packages pinned in `requirements.txt` (numpy and scipy).
+- Hardware: CPU only. Prediction takes about 15 minutes on 2 cores, with peak RAM under 4 GB. Nothing is trained during the rerun.
 
 ## Recreate the forecast
 
@@ -21,19 +21,30 @@ The run is deterministic, with no random numbers at prediction time.
 
 ## Team blend
 
-`predict.py` also runs the teammates' Bayesian filter models in `partner*/`. The code and `model.json` there are unchanged from the teammate's own entry; see `partner/PARTNER_README.md`. The blend combines win chances with a two-state gate. Error analysis on validation showed that the Bayesian filter is more accurate when a machine is in its low-win state, and the GRU ensemble when it is in its high-win state. So a query counts as "low" when the models' average win chance is below its machine type's validation median, and:
+`predict.py` also runs the two teammates' Bayesian models:
 
-- low state: 30% ours + 70% partner
-- high state: 80% ours + 20% partner
+- `partner/`: Bayesian filter. Code and `model.json` are unchanged from that teammate's entry; see `partner/PARTNER_README.md`. It runs in-process.
+- `partner2/`: Bayesian model with abrupt and linear flips, episode-level flips and an episode latent. Code is unchanged from that teammate's entry; see `partner2/PARTNER_README.md`. It runs as a subprocess (`partner2/predict.py`) and its `p_0` is read back.
+
+The blend combines win chances in log-odds space with a two-state gate. Error analysis on validation showed that the Bayesian models are more accurate when a machine is in its low-win state, and the GRU ensemble when it is in its high-win state. A query counts as "low" when the three models' average win chance is below its machine type's validation median (balanced 0.7514, jackpot 0.0230, steady 0.9141). Short histories (under 100 observed ticks) get their own weights. Weights on the log-odds of win chance, as [ours, partner, partner2]:
+
+| state | full history | short history |
+| --- | --- | --- |
+| low | [0.4, 0.2, 0.4] | [0.0, 0.6, 0.4] |
+| high | [0.7, 0.0, 0.3] | [0.8, 0.2, 0.0] |
 
 The payout-size distribution always comes from our rule model. The gate design and weights were chosen by 4-fold, condition-stratified episode cross-validation on public validation.
 
 | entry | validation points / 60 |
 | --- | --- |
 | our GRU + rule model alone | 58.33 |
-| teammate filter alone (`partner/`) | 58.08 |
-| fixed 70/30 blend | 58.41 |
-| state-gated blend (this entry) | **58.46** (cross-validated estimate 58.43) |
+| `partner/` alone | 58.08 |
+| `partner2/` alone | 58.07 |
+| two-way gated blend (ours + partner) | 58.46 |
+| three-way gated blend, linear | 58.51 (cross-validated estimate 58.48) |
+| three-way gated blend, log-odds, short-history weights (this entry) | **58.55** (cross-validated estimate 58.50) |
+
+Condition loss ratios of this entry: stable 0.0173, short history 0.0456, drift 0.0183, shared change 0.0179.
 
 ## Rule model (found in the public data)
 
@@ -47,7 +58,7 @@ The payout-size distribution always comes from our rule model. The gate design a
 python fit_rules.py --data public --out models/rules.json
 ```
 
-Validation score of this exact pipeline: **58.33 / 60** (`check_submission.py --split validation`). Condition loss ratios: stable 0.0205, short history 0.0543, drift 0.0197, shared change 0.0203.
+Validation score of our model alone (without the team blend): **58.33 / 60** (`check_submission.py --split validation`). Condition loss ratios: stable 0.0205, short history 0.0543, drift 0.0197, shared change 0.0203.
 
 ## Win-chance networks
 
