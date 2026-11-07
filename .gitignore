@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.DS_Store
+kit/
+data/
+*.csv
+seq_*.npz
