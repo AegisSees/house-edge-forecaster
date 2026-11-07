@@ -21,13 +21,19 @@ The run is deterministic, with no random numbers at prediction time.
 
 ## Team blend
 
-`predict.py` also runs the teammates' Bayesian filter models in `partner*/`. The code and `model.json` there are unchanged from the teammate's own entry; see `partner/PARTNER_README.md`. Their win chance is mixed into ours with the weights in `PARTNERS` at the top of `predict.py`, and the payout-size distribution comes from our rule model. The weights were chosen on public validation:
+`predict.py` also runs the teammates' Bayesian filter models in `partner*/`. The code and `model.json` there are unchanged from the teammate's own entry; see `partner/PARTNER_README.md`. The blend combines win chances with a two-state gate. Error analysis on validation showed that the Bayesian filter is more accurate when a machine is in its low-win state, and the GRU ensemble when it is in its high-win state. So a query counts as "low" when the models' average win chance is below its machine type's validation median, and:
+
+- low state: 30% ours + 70% partner
+- high state: 80% ours + 20% partner
+
+The payout-size distribution always comes from our rule model. The gate design and weights were chosen by 4-fold, condition-stratified episode cross-validation on public validation.
 
 | entry | validation points / 60 |
 | --- | --- |
 | our GRU + rule model alone | 58.33 |
 | teammate filter alone (`partner/`) | 58.08 |
-| blend, 70% ours and 30% partner win chance | **58.41** |
+| fixed 70/30 blend | 58.41 |
+| state-gated blend (this entry) | **58.46** (cross-validated estimate 58.43) |
 
 ## Rule model (found in the public data)
 

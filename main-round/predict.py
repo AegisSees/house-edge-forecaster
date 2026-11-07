@@ -14,8 +14,12 @@ from houseedge.joint_model import high_probability, structured_win
 import json
 
 HERE = Path(__file__).resolve().parent
-# Teammates' models: (folder, share of the final win chance). Our GRU+rule model keeps the rest.
-PARTNERS = [("partner", 0.3)]
+# Teammates' models and a two-state gate (chosen by 4-fold episode cross-validation on public validation).
+# A query is "low state" when the average of all models' win chance is below the machine type's
+# threshold; Bayesian filters are better there, our GRU ensemble is better in the high-win state.
+PARTNERS = ["partner"]
+GATE_THRESHOLD = {"balanced": 0.7372, "jackpot": 0.0241, "steady": 0.9087}   # type medians on validation
+WEIGHTS = {"low": [0.3, 0.7], "high": [0.8, 0.2]}   # [ours, partner...]
 
 
 def partner_win(folder, data, split, qids):
@@ -77,8 +81,10 @@ def main():
                 c_hi, c_lo = cfg["centers"][key]
                 sw = structured_win(Y[i], int(cuts[i]), lo, hi, rules, thr, c_hi, c_lo, cfg["kappa_win"])
                 win[i] = cfg["short_blend"] * sw + (1 - cfg["short_blend"]) * win[i]
-        own = sum(w for _, w in PARTNERS)
-        win = (1 - own) * win + sum(w * partner_win(f, a.data, a.split, qids) for f, w in PARTNERS)
+        allw = np.stack([win] + [partner_win(f, a.data, a.split, qids) for f in PARTNERS], 1)
+        low = allw.mean(1) < np.array([GATE_THRESHOLD[t] for t in types])
+        wts = np.where(low[:, None], np.array(WEIGHTS["low"]), np.array(WEIGHTS["high"]))
+        win = (allw * wts).sum(1)
         P = np.column_stack([1.0 - win, win[:, None] * sizes])
     if P is None:
         raise SystemExit("models/rules.json is required")
