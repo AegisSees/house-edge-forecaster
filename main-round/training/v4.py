@@ -1,4 +1,4 @@
-import sys, os; sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'..'))
+import sys, os; sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0,os.environ.get('ENTRY',os.path.join(os.path.dirname(os.path.abspath(__file__)),'..')))
 from common import load, score, PC, D as PUB
 import os
 import numpy as np, pandas as pd, torch, torch.nn as nn, torch.nn.functional as F, time, argparse
@@ -7,7 +7,7 @@ ap=argparse.ArgumentParser()
 ap.add_argument('--hid',type=int,default=128); ap.add_argument('--ep',type=int,default=28); ap.add_argument('--lr',type=float,default=3e-3)
 ap.add_argument('--drop',type=float,default=0.1); ap.add_argument('--seed',type=int,default=1); ap.add_argument('--aug',type=float,default=0.0)
 ap.add_argument('--mix',type=int,default=0); ap.add_argument('--threads',type=int,default=4); ap.add_argument('--tag',default='v2')
-ap.add_argument('--fext',type=int,default=1); ap.add_argument('--pair',type=int,default=1); ap.add_argument('--bs',type=int,default=8); ap.add_argument('--wd',type=float,default=1e-4); ap.add_argument('--evalfrom',type=int,default=15)
+ap.add_argument('--fext',type=int,default=1); ap.add_argument('--binary',type=int,default=0); ap.add_argument('--pair',type=int,default=1); ap.add_argument('--bs',type=int,default=8); ap.add_argument('--wd',type=float,default=1e-4); ap.add_argument('--evalfrom',type=int,default=15)
 a=ap.parse_args(); torch.manual_seed(a.seed); np.random.seed(a.seed); torch.set_num_threads(a.threads)
 def raw(split):
     qs,hist=load_split(PUB/split)
@@ -132,7 +132,11 @@ for e in range(a.ep):
     perm=torch.randperm(nE); tl=0;t0=time.time()
     for i in range(0,nE,a.bs):
         b=perm[i:i+a.bs]; Y=YALL[b]
-        L=net(XALL[b]); loss=lossf(L.reshape(-1,5),Y.reshape(-1))
+        L=net(XALL[b])
+        if a.binary:
+            yy=Y.reshape(-1); okm=yy>=0; Lf=L.reshape(-1,5)[okm]; wl=torch.logsumexp(Lf[:,1:],-1)-Lf[:,0]
+            loss=F.binary_cross_entropy_with_logits(wl,(yy[okm]>0).float())
+        else: loss=lossf(L.reshape(-1,5),Y.reshape(-1))
         opt.zero_grad(); loss.backward(); nn.utils.clip_grad_norm_(net.parameters(),1.0); opt.step(); sched.step(); tl+=loss.item()
     msg=f'{e} {tl/np.ceil(nE/a.bs):.4f} {time.time()-t0:.0f}s'
     if e>=a.evalfrom or e==a.ep-1:
