@@ -31,11 +31,11 @@ The run is deterministic, with no random numbers at prediction time.
 python fit_rules.py --data public --out models/rules.json
 ```
 
-Validation score of this exact pipeline: **58.30 / 60** (`check_submission.py --split validation`). Condition loss ratios: stable 0.0196, short history 0.0548, drift 0.0211, shared change 0.0214.
+Validation score of this exact pipeline: **58.33 / 60** (`check_submission.py --split validation`). Condition loss ratios: stable 0.0205, short history 0.0543, drift 0.0197, shared change 0.0203.
 
 ## Win-chance networks
 
-There are 14 recurrent nets (2 stacked GRUs, hidden size 128). Their inputs are the one-hot payouts at lags 1 to 8, the other machines' win rates at lags 1 to 8, machine type, signal and tick. The v3 and v4 variants add causal per-machine running statistics: conditional win rates for each lag and for each lag pair. Each net is trained with cross-entropy on the next observed payout at every history tick of the round's train, validation and test histories. Validation and test answers are never training inputs.
+There are 22 recurrent nets (2 stacked GRUs, hidden size 128). Their inputs are the one-hot payouts at lags 1 to 8, the other machines' win rates at lags 1 to 8, machine type, signal and tick. The v3 and v4 variants add causal per-machine running statistics: conditional win rates for each lag and for each lag pair. Each net is trained with cross-entropy on the next observed payout at every history tick of the round's train, validation and test histories. Validation and test answers are never training inputs.
 
 The training scripts are in `training/` and need torch and pandas. They read the kit through the `KIT` environment variable and write `w_<tag>.npz` to `OUTD`.
 
@@ -44,7 +44,9 @@ The training scripts are in `training/` and need torch and pandas. They read the
 | gru_e1 | `gru.py --ep 28 --hid 128 --layers 2 --seed 1` |
 | gru_g3 | `gru.py --ep 60 --hid 128 --layers 2 --seed 0` |
 | gru_A, gru_B, gru_C, gru_D, gru_C2, gru_C3 | `v2.py` (A: --aug 0.5; B: --aug 0.5 --mix 1; C: defaults; D: --mix 1; C2/C3: --seed 2/3) |
-| gru_F1, gru_F4, gru_F5 | `v3.py --seed 1/4/5` |
+| gru_F1, gru_F4, gru_F5, gru_F6, gru_F7 | `v3.py --seed 1/4/5/6/7` |
+| gru_FB1, gru_FB2, gru_FB3 | `v3.py --binary 1 --seed 11/21/22` (win/loss loss only) |
+| gru_PB1, gru_PB2, gru_PB3 | `v4.py --binary 1 --seed 12/23/24` (win/loss loss only) |
 | gru_P1, gru_P2, gru_P3 | `v4.py --seed 1/2/3` |
 
 CPU training in torch 2.15 is not bit-for-bit deterministic across machines, so the exact weights are included.
