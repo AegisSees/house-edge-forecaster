@@ -4,26 +4,35 @@ from common import *
 from model4 import PAIRS, SL, SH, BIAS, gfun, fit2, ep_feat
 CFG=dict(W=2.4, sd_w=0.3, sd_b=0.3, step=4, Ls=(16,32,64,128), pc=0.5, p_abrupt=0.5, size_pc=0.3,
          c_mu=0.7, c_sd=0.6, ep_lags=(3,), c_mu6=0.2, c_sd6=0.4, use_ep=True, p_shared=0.25, rho=0.99, short_pc=0.001, short_spc=0.001, short_ps=0.001, ep_cond=False, p_stable=0.5, p_drift=0.5)
+from model4 import PARAMS
+if PARAMS:
+    CFG['W']=PARAMS.get('W',CFG['W']); CFG['ep_lags']=(PARAMS.get('ep_lag',3),)
+DROP=True   # short histories: fit each lag pair only on ticks where both lags are observed (CV +0.010)
 def lse(a,axis=None):
     a=np.asarray(a); m=a.max(axis=axis,keepdims=True); r=m+np.log(np.exp(a-m).sum(axis=axis,keepdims=True))
     return r.squeeze(axis) if axis is not None else float(r.squeeze())
 def win_parts(s,ticks,cu,mu_b,cfg,ep,en,chs):
     tk=np.array(ticks,float); y=np.array([s[t]>0 for t in ticks],float)
-    X=np.zeros((len(ticks),3)); xn=np.zeros(3)
+    X=np.zeros((len(ticks),len(PAIRS))); xn=np.zeros(len(PAIRS))
     for j,(a,b) in enumerate(PAIRS):
         X[:,j]=[(1.0 if (s[t-a]>0)!=(s[t-b]>0) else -1.0) if (t-a in s and t-b in s) else 0.0 for t in ticks]
         xn[j]=(1.0 if (s[cu-a]>0)!=(s[cu-b]>0) else -1.0) if (cu-a in s and cu-b in s) else 0.0
     out={}
     for ch in chs:
-        g=gfun(tk,ch); gn=float(gfun(np.array([cu],float),ch)[0]); L=np.zeros(3); PR=np.zeros(3)
-        for j in range(3):
+        g=gfun(tk,ch); gn=float(gfun(np.array([cu],float),ch)[0]); L=np.zeros(len(PAIRS)); PR=np.zeros(len(PAIRS))
+        for j in range(len(PAIRS)):
             z=X[:,j]*g; evs=[];pr=[]
+            if cfg.get('drop'):   # short histories: fit pair j only on ticks where both of its lags are observed
+                mk=X[:,j]!=0
+                if mk.sum()>=2: z=z[mk]; yy=y[mk]; epp=None if ep is None else ep[mk]
+                else: yy=y; epp=ep
+            else: yy=y; epp=ep
             for sg in (1,-1):
                 if ep is None:
-                    b,ev=fit2(z,y,np.array([mu_b,sg*cfg['W']]),np.array([cfg['sd_b']**2,cfg['sd_w']**2])); e=b[0]+b[1]*xn[j]*gn
+                    b,ev=fit2(z,yy,np.array([mu_b,sg*cfg['W']]),np.array([cfg['sd_b']**2,cfg['sd_w']**2])); e=b[0]+b[1]*xn[j]*gn
                 else:
                     nl=ep.shape[1]; cm=[cfg['c_mu']]+[cfg['c_mu6']]*(nl-1); cs=[cfg['c_sd']**2]+[cfg['c_sd6']**2]*(nl-1)
-                    b,ev=fit2(z,y,np.array([mu_b,sg*cfg['W']]+cm),np.array([cfg['sd_b']**2,cfg['sd_w']**2]+cs),extra=ep); e=b[0]+b[1]*xn[j]*gn+b[2:]@en
+                    b,ev=fit2(z,yy,np.array([mu_b,sg*cfg['W']]+cm),np.array([cfg['sd_b']**2,cfg['sd_w']**2]+cs),extra=epp); e=b[0]+b[1]*xn[j]*gn+b[2:]@en
                 evs.append(ev+np.log(0.5)); pr.append(1/(1+np.exp(-e)))
             evs=np.array(evs); L[j]=lse(evs); PR[j]=np.exp(evs-L[j])@np.array(pr)
         out[ch]=(L,PR)
@@ -33,7 +42,7 @@ def size_parts(s,ticks,cu,typ,chs):
     idx={1:0,2:1,5:2,20:3}; tk=np.array(win,float); yi=np.array([idx[s[t]] for t in win],int)
     lhi=np.log(hi)[yi]; llo=np.log(lo)[yi]; out={}
     for ch in chs:
-        g=gfun(tk,ch); gn=float(gfun(np.array([cu],float),ch)[0]); L=np.zeros(3); PR=np.zeros((3,4))
+        g=gfun(tk,ch); gn=float(gfun(np.array([cu],float),ch)[0]); L=np.zeros(len(SL)); PR=np.zeros((len(SL),4))
         for j,k in enumerate(SL):
             f=np.array([(1.0 if s[t-k]>=2 else -1.0) if t-k in s else 0.0 for t in win]); fn=(1.0 if s[cu-k]>=2 else -1.0) if cu-k in s else 0.0
             evs=[];pr=[]
@@ -55,7 +64,7 @@ def predict_episode(rows,Hs,cfg):
     cu=rows[0]['cutoff']; mids=[r['machine_id'] for r in rows]
     short=np.mean([len([t for t in h if t<cu]) for h in Hs.values()])<0.6*cu
     if short and cfg.get('short_pc') is not None:
-        cfg={**cfg,'pc':cfg['short_pc'],'size_pc':cfg['short_spc'],'p_shared':cfg['short_ps']}
+        cfg={**cfg,'pc':cfg['short_pc'],'size_pc':cfg['short_spc'],'p_shared':cfg['short_ps'],'drop':DROP}
     tmin=min(min(h) for h in Hs.values()); Ts=list(range(max(tmin,8),cu-1,cfg['step']))
     wch=[None]+[(T,0) for T in Ts]+[(T,L) for L in cfg['Ls'] for T in Ts]
     schs=[None]+[(T,0) for T in Ts]
@@ -65,7 +74,7 @@ def predict_episode(rows,Hs,cfg):
         for T in Ts: lpw[(T,L)]=np.log(cfg['pc']*(1-cfg['p_abrupt'])/(len(Ts)*len(cfg['Ls'])))
     lps={None:np.log(1-cfg['size_pc'])}
     for T in Ts: lps[(T,0)]=np.log(cfg['size_pc']/len(Ts))
-    rho=cfg['rho']; LK=np.log(np.where(np.eye(3)>0,rho,(1-rho)/2))+np.log(1/3)  # log p(j)p(k|j)
+    rho=cfg['rho']; nP=len(PAIRS); LK=np.log(np.where(np.eye(nP)>0,rho,(1-rho)/max(nP-1,1)))+np.log(1/nP)  # log p(j)p(k|j)
     res={}
     for r in rows:
         m=r['machine_id']; s=Hs[m]; ticks=[t for t in sorted(s) if t<cu]; others=[Hs[o] for o in mids if o!=m]

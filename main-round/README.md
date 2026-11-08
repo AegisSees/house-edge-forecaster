@@ -24,13 +24,13 @@ The run is deterministic, with no random numbers at prediction time.
 `predict.py` also runs the two teammates' Bayesian models:
 
 - `partner/`: Bayesian filter. Code and `model.json` are unchanged from that teammate's entry; see `partner/PARTNER_README.md`. It runs in-process.
-- `partner2/`: Bayesian model with abrupt and linear flips, episode-level flips and an episode latent. Code is unchanged from that teammate's entry; see `partner2/PARTNER_README.md`. It runs as a subprocess (`partner2/predict.py`) and its `p_0` is read back.
+- `partner2/`: Bayesian model with abrupt and linear flips, episode-level flips and an episode latent; see `partner2/PARTNER_README.md`. It runs as a subprocess (`partner2/predict.py`) and its `p_0` is read back. One change from that teammate's entry: for short-history episodes, each lag pair's win model is fitted only on ticks where both of the pair's lags were observed (`DROP` in `partner2/model6.py`; full histories are unaffected). This raised `partner2/` alone from 58.07 to 58.15 on validation and the team blend by about 0.01 points in cross-validation (better in 16 of 20 fold splits). `model4.py`, `model6.py` and `latent.py` also read optional round parameters from `params.json`, which is absent in this entry, so the main-round constants are used.
 
-The blend combines win chances in log-odds space with a two-state gate. Error analysis on validation showed that the Bayesian models are more accurate when a machine is in its low-win state, and the GRU ensemble when it is in its high-win state. A query counts as "low" when the three models' average win chance is below its machine type's validation median (balanced 0.7451, jackpot 0.0219, steady 0.9168). Short histories (under 100 observed ticks) get their own weights. Weights on the log-odds of win chance, as [ours, partner, partner2]:
+The blend combines win chances in log-odds space with a two-state gate. Error analysis on validation showed that the Bayesian models are more accurate when a machine is in its low-win state, and the GRU ensemble when it is in its high-win state. A query counts as "low" when the three models' average win chance is below its machine type's validation median (balanced 0.7358, jackpot 0.0215, steady 0.9168). Short histories (under 100 observed ticks) get their own weights. Weights on the log-odds of win chance, as [ours, partner, partner2]:
 
 | state | full history | short history |
 | --- | --- | --- |
-| low | [0.3, 0.2, 0.5] | [0.0, 0.6, 0.4] |
+| low | [0.2, 0.2, 0.6] | [0.0, 0.5, 0.5] |
 | high | [0.6, 0.0, 0.4] | [0.7, 0.3, 0.0] |
 
 The payout-size distribution comes from our rule model for full histories. For short histories it comes from `partner/`, whose size forecast was more accurate there in cross-validation. The gate design and weights were chosen by 4-fold, condition-stratified episode cross-validation on public validation.
@@ -46,7 +46,8 @@ The payout-size distribution comes from our rule model for full histories. For s
 | three-way gated blend, log-odds, short-history weights | 58.55 (cross-validated estimate 58.50) |
 | same, plus log-odds averaging of our nets and `partner/` sizes for short histories | 58.57 (cross-validated estimate 58.52) |
 | same, using only the 16 five-class nets and a 20% structured blend for short histories | 58.60 (cross-validated estimate 58.55) |
-| same, without the three v4 five-class nets (13 nets, this entry) | **58.60** (cross-validated estimate 58.56) |
+| same, without the three v4 five-class nets (13 nets) | 58.60 (cross-validated estimate 58.56) |
+| same, with `partner2/` skipping unobserved-lag ticks on short histories and re-picked weights (this entry) | **58.60** (58.6038; cross-validated estimate 58.56, +0.010 over the previous row) |
 
 Condition loss ratios of this entry: stable 0.0166, short history 0.0431, drift 0.0183, shared change 0.0176.
 

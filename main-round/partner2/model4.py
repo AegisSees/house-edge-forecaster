@@ -7,6 +7,16 @@ SH={'steady':([0.754,0.197,0.048,0.001],[0.455,0.436,0.107,0.002]),
 BIAS={('balanced',-1):-1.09,('balanced',0):-0.72,('balanced',1):-0.33,('jackpot',-1):-2.51,('jackpot',0):-2.21,('jackpot',1):-1.71,
       ('steady',-1):0.27,('steady',0):0.51,('steady',1):0.93}
 CFG=dict(c_mu=0.7, c_sd=0.6, ep_lag=3, use_ep=True, W=2.4, sd_w=0.3, sd_b=0.45, step=4, Ls=(16,32,64,128), pc=0.5, p_abrupt=0.5, size_pc=0.3, fit_w=True)
+
+# Round override: params.json (written by the team pipeline from the round's fitted rules) replaces the constants above.
+import json as _json, os as _os
+_PP=_os.path.join(_os.path.dirname(_os.path.abspath(__file__)),'params.json')
+PARAMS=_json.load(open(_PP)) if _os.path.exists(_PP) else None
+if PARAMS:
+    PAIRS=[tuple(x) for x in PARAMS['pairs']]; SL=tuple(PARAMS['size_lags'])
+    SH={k:tuple(v) for k,v in PARAMS['sh'].items()}
+    BIAS={(k.split('|')[0],int(k.split('|')[1])):v for k,v in PARAMS['bias'].items()}
+    CFG['W']=PARAMS.get('W',CFG['W']); CFG['ep_lag']=PARAMS.get('ep_lag',CFG['ep_lag'])
 def gfun(tk,ch):
     if ch is None: return np.ones_like(tk)
     T,L=ch
@@ -32,14 +42,14 @@ def changes(cu,tmin,cfg):
     return out
 def win_model(s,ticks,cu,mu_b,cfg,return_post=False,ep=None,en=None):
     tk=np.array(ticks,float); y=np.array([s[t]>0 for t in ticks],float)
-    X=np.zeros((len(ticks),3)); xn=np.zeros(3)
+    X=np.zeros((len(ticks),len(PAIRS))); xn=np.zeros(len(PAIRS))
     for j,(a,b) in enumerate(PAIRS):
         X[:,j]=[(1.0 if (s[t-a]>0)!=(s[t-b]>0) else -1.0) if (t-a in s and t-b in s) else 0.0 for t in ticks]
         xn[j]=(1.0 if (s[cu-a]>0)!=(s[cu-b]>0) else -1.0) if (cu-a in s and cu-b in s) else 0.0
     evs=[];preds=[];info=[]
     for ch,lp in changes(cu,int(tk.min()),cfg):
         g=gfun(tk,ch); gn=float(gfun(np.array([cu],float),ch)[0])
-        for j in range(3):
+        for j in range(len(PAIRS)):
             z=X[:,j]*g
             for sg in (1,-1):
                 if ep is None:

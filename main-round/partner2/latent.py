@@ -4,7 +4,7 @@ from common import *; import model4 as M
 def machine_series(r,s,others,cfg):
     """MAP top hypothesis in-sample logit series and info at cutoff"""
     cu=r['cutoff']; ticks=[t for t in sorted(s) if t<cu]
-    ep=M.ep_feat(others,ticks,3); en=M.ep_feat(others,[cu],3)[0]
+    ep=M.ep_feat(others,ticks,cfg.get('ep_lag',3)); en=M.ep_feat(others,[cu],cfg.get('ep_lag',3))[0]
     p,w,info=M.win_model(s,ticks,cu,M.BIAS[(r['machine_type'],r['signal'])],cfg,return_post=True,ep=ep,en=en)
     ch,j,sg=info[int(np.argmax(w))]
     a,b=M.PAIRS[j]; tk=np.array(ticks,float); y=np.array([s[t]>0 for t in ticks],float)
