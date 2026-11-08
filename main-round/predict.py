@@ -115,6 +115,15 @@ def main():
         P = np.column_stack([1.0 - win, win[:, None] * sizes])
     if P is None:
         raise SystemExit("models/rules.json is required")
+    # Episode-latent correction (houseedge/episode_latent.py): shared episode luck from other machines' GRU residuals.
+    from houseedge.episode_latent import latent_shift
+    episodes = np.array([qrows[q]["episode_id"] for q in qids])
+    xq, beta = latent_shift(models, X, Y, cuts, episodes)
+    xq = np.where(is_short, 0.0, xq)
+    pw = np.clip(1.0 - P[:, 0], 1e-9, 1 - 1e-9); sz = P[:, 1:] / pw[:, None]
+    pw2 = 1.0 / (1.0 + np.exp(-(np.log(pw / (1 - pw)) + beta * xq)))
+    P = np.column_stack([1.0 - pw2, pw2[:, None] * sz])
+    print(f"  episode latent: beta {beta}", flush=True)
     P = np.clip(P, 1e-12, 1.0)
     P /= P.sum(1, keepdims=True)
     out = Path(a.out)

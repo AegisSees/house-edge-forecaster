@@ -47,9 +47,14 @@ The payout-size distribution comes from our rule model for full histories. For s
 | same, plus log-odds averaging of our nets and `partner/` sizes for short histories | 58.57 (cross-validated estimate 58.52) |
 | same, using only the 16 five-class nets and a 20% structured blend for short histories | 58.60 (cross-validated estimate 58.55) |
 | same, without the three v4 five-class nets (13 nets) | 58.60 (cross-validated estimate 58.56) |
-| same, with `partner2/` skipping unobserved-lag ticks on short histories and re-picked weights (this entry) | **58.60** (58.6038; cross-validated estimate 58.56, +0.010 over the previous row) |
+| same, with `partner2/` skipping unobserved-lag ticks on short histories and re-picked weights | 58.60 (58.6038; cross-validated estimate 58.56, +0.010 over the previous row) |
+| same, plus the episode-latent correction (this entry) | **58.63** (58.6264) |
 
 Condition loss ratios of this entry: stable 0.0166, short history 0.0431, drift 0.0183, shared change 0.0176.
+
+## Episode-latent correction
+
+Machines in one episode share a slowly drifting luck term in the win chance. After the blend, `houseedge/episode_latent.py` adds `beta * x` to the log-odds of win, where `x` is the half-life-8 exponentially weighted mean, over ticks before the cutoff, of the other machines' one-step residuals (observed win minus our GRU ensemble's in-sample win chance at that tick). It is skipped for short histories. `beta` is fitted by maximum likelihood on the predicted split's own history ticks (grid 0 to 4, step 0.25; no labels or targets are read); it is 1.25 on validation. Payout sizes are unchanged. Validation: 58.604 -> 58.626 (stratified episode bootstrap 90% interval for the gain with three nets: +0.012 to +0.043).
 
 ## Rule model (found in the public data)
 
