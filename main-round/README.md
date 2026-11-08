@@ -26,12 +26,12 @@ The run is deterministic, with no random numbers at prediction time.
 - `partner/`: Bayesian filter. Code and `model.json` are unchanged from that teammate's entry; see `partner/PARTNER_README.md`. It runs in-process.
 - `partner2/`: Bayesian model with abrupt and linear flips, episode-level flips and an episode latent. Code is unchanged from that teammate's entry; see `partner2/PARTNER_README.md`. It runs as a subprocess (`partner2/predict.py`) and its `p_0` is read back.
 
-The blend combines win chances in log-odds space with a two-state gate. Error analysis on validation showed that the Bayesian models are more accurate when a machine is in its low-win state, and the GRU ensemble when it is in its high-win state. A query counts as "low" when the three models' average win chance is below its machine type's validation median (balanced 0.7462, jackpot 0.0224, steady 0.9163). Short histories (under 100 observed ticks) get their own weights. Weights on the log-odds of win chance, as [ours, partner, partner2]:
+The blend combines win chances in log-odds space with a two-state gate. Error analysis on validation showed that the Bayesian models are more accurate when a machine is in its low-win state, and the GRU ensemble when it is in its high-win state. A query counts as "low" when the three models' average win chance is below its machine type's validation median (balanced 0.7451, jackpot 0.0219, steady 0.9168). Short histories (under 100 observed ticks) get their own weights. Weights on the log-odds of win chance, as [ours, partner, partner2]:
 
 | state | full history | short history |
 | --- | --- | --- |
 | low | [0.3, 0.2, 0.5] | [0.0, 0.6, 0.4] |
-| high | [0.6, 0.0, 0.4] | [0.8, 0.2, 0.0] |
+| high | [0.6, 0.0, 0.4] | [0.7, 0.3, 0.0] |
 
 The payout-size distribution comes from our rule model for full histories. For short histories it comes from `partner/`, whose size forecast was more accurate there in cross-validation. The gate design and weights were chosen by 4-fold, condition-stratified episode cross-validation on public validation.
 
@@ -45,9 +45,10 @@ The payout-size distribution comes from our rule model for full histories. For s
 | three-way gated blend, linear | 58.51 (cross-validated estimate 58.48) |
 | three-way gated blend, log-odds, short-history weights | 58.55 (cross-validated estimate 58.50) |
 | same, plus log-odds averaging of our nets and `partner/` sizes for short histories | 58.57 (cross-validated estimate 58.52) |
-| same, using only the 16 five-class nets and a 20% structured blend for short histories (this entry) | **58.60** (cross-validated estimate 58.55) |
+| same, using only the 16 five-class nets and a 20% structured blend for short histories | 58.60 (cross-validated estimate 58.55) |
+| same, without the three v4 five-class nets (13 nets, this entry) | **58.60** (cross-validated estimate 58.56) |
 
-Condition loss ratios of this entry: stable 0.0168, short history 0.0432, drift 0.0183, shared change 0.0175.
+Condition loss ratios of this entry: stable 0.0166, short history 0.0431, drift 0.0183, shared change 0.0176.
 
 ## Rule model (found in the public data)
 
@@ -65,7 +66,7 @@ Validation score of our model alone (without the team blend, earlier 22-net medi
 
 ## Win-chance networks
 
-There are 16 recurrent nets (2 stacked GRUs, hidden size 128). Six win/loss-only nets from earlier versions were dropped because the team blend scored better without them in cross-validation. Their inputs are the one-hot payouts at lags 1 to 8, the other machines' win rates at lags 1 to 8, machine type, signal and tick. The v3 and v4 variants add causal per-machine running statistics: conditional win rates for each lag and for each lag pair. Each net is trained with cross-entropy on the next observed payout at every history tick of the round's train, validation and test histories. Validation and test answers are never training inputs.
+There are 13 recurrent nets (2 stacked GRUs, hidden size 128). Six win/loss-only nets and three v4 five-class nets from earlier versions were dropped because the team blend scored better without them in cross-validation. Their inputs are the one-hot payouts at lags 1 to 8, the other machines' win rates at lags 1 to 8, machine type, signal and tick. The v3 and v4 variants add causal per-machine running statistics: conditional win rates for each lag and for each lag pair. Each net is trained with cross-entropy on the next observed payout at every history tick of the round's train, validation and test histories. Validation and test answers are never training inputs.
 
 The training scripts are in `training/` and need torch and pandas. They read the kit through the `KIT` environment variable and write `w_<tag>.npz` to `OUTD`.
 
@@ -75,6 +76,5 @@ The training scripts are in `training/` and need torch and pandas. They read the
 | gru_g3 | `gru.py --ep 60 --hid 128 --layers 2 --seed 0` |
 | gru_A, gru_B, gru_C, gru_D, gru_C2, gru_C3 | `v2.py` (A: --aug 0.5; B: --aug 0.5 --mix 1; C: defaults; D: --mix 1; C2/C3: --seed 2/3) |
 | gru_F1, gru_F4, gru_F5, gru_F6, gru_F7 | `v3.py --seed 1/4/5/6/7` |
-| gru_P1, gru_P2, gru_P3 | `v4.py --seed 1/2/3` |
 
 CPU training in torch 2.15 is not bit-for-bit deterministic across machines, so the exact weights are included.

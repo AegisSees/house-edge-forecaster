@@ -18,10 +18,10 @@ HERE = Path(__file__).resolve().parent
 # A query is "low state" when the average of all models' win chance is below the machine type's
 # threshold; Bayesian filters are better there, our GRU ensemble is better in the high-win state.
 PARTNERS = ["partner", "partner2"]
-GATE_THRESHOLD = {"balanced": 0.7462, "jackpot": 0.0224, "steady": 0.9163}   # type medians on validation
+GATE_THRESHOLD = {"balanced": 0.7451, "jackpot": 0.0219, "steady": 0.9168}   # type medians on validation
 # [ours, partner, partner2], applied to log-odds; separate weights for short histories (< short_obs observed ticks)
 WEIGHTS = {"low": [0.3, 0.2, 0.5], "high": [0.6, 0.0, 0.4],
-           "short_low": [0.0, 0.6, 0.4], "short_high": [0.8, 0.2, 0.0]}
+           "short_low": [0.0, 0.6, 0.4], "short_high": [0.7, 0.3, 0.0]}
 # For short histories the payout-size distribution comes from this teammate's filter (cross-validated).
 SHORT_SIZE_PARTNER = "partner"
 
