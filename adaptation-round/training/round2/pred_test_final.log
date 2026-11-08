@@ -1,0 +1,7 @@
+  gru_E1.npz
+  gru_F11.npz
+  gru_F12.npz
+  gru_F13.npz
+  predicted 1536 in 131s
+  episode latent: beta 1.5
+Wrote 1536 forecasts from 4 model(s) to test_final.csv

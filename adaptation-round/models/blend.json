@@ -1,0 +1,39 @@
+{
+ "partners": [
+  "partner",
+  "partner2"
+ ],
+ "gate_threshold": {
+  "balanced": 0.1211,
+  "jackpot": 0.0207,
+  "steady": 0.9115
+ },
+ "weights": {
+  "high": [
+   0.4,
+   0.0,
+   0.6
+  ],
+  "low": [
+   0.4,
+   0.0,
+   0.6
+  ],
+  "short_high": [
+   0.4,
+   0.0,
+   0.6
+  ],
+  "short_low": [
+   0.4,
+   0.0,
+   0.6
+  ]
+ },
+ "full_size_partner": null,
+ "short_size_partner": "partner2",
+ "cv_ratio": 0.02765095145557764,
+ "choice": "global",
+ "val_ratio_with_sizes": 0.02677561749372859,
+ "episode_latent": true
+}

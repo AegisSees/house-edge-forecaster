@@ -1,0 +1,11 @@
+model 0 val_ours.csv alone ratio 0.03393
+model 1 val_partner.csv alone ratio 0.03755
+model 2 val_partner2.csv alone ratio 0.0288
+global         logit CV ratio 0.02765
+state          logit CV ratio 0.02805
+state x short  logit CV ratio 0.02832
+sizes full from 0 short from 2 ratio 0.02678
+sizes full from 1 short from 2 ratio 0.02681
+sizes full from 0 short from 0 ratio 0.02685
+sizes full from 1 short from 0 ratio 0.02688
+wrote entry/models/blend.json {"partners": ["partner", "partner2"], "gate_threshold": {"balanced": 0.1211, "jackpot": 0.0207, "steady": 0.9115}, "weights": {"high": [0.4, 0.0, 0.6], "low": [0.4, 0.0, 0.6], "short_high": [0.4, 0.0, 0.6], "short_low": [0.4, 0.0, 0.6]}, "full_size_partner": null, "short_size_partner": "partner2", "cv_ratio": 0.02765095145557764, "choice": "global", "val_ratio_with_sizes": 0.02677561749372859}

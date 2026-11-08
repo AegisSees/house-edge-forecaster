@@ -1,0 +1,6 @@
+  gru_E1.npz
+  gru_F11.npz
+  gru_F12.npz
+  gru_F13.npz
+  episode latent: beta 1.5
+Wrote 768 forecasts from 4 model(s) to val_ours.csv

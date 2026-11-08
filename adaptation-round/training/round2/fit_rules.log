@@ -1,0 +1,11 @@
+ticks 257 max lag searched 16
+steady low [0.754  0.1968 0.0482 0.001 ] high [0.4551 0.4359 0.1068 0.0022] spread 5.003707553108401e-16
+jackpot low [0.3351 0.2449 0.3149 0.105 ] high [0.1208 0.3239 0.4165 0.1388] spread 2.386758314747469e-15
+balanced low [0.4999 0.3479 0.1305 0.0217] high [0.2141 0.5467 0.205  0.0342] spread 1.315363527438991e-15
+size rule counts [((3, 2), 121), ((2, 2), 118), ((1, 2), 116), ((6, 1), 2), ((4, 3), 1), ((2, 1), 1), ((2, 3), 1), ((4, 2), 1)] -> lags [1, 2, 3] threshold 2
+win pair counts [((3, 8), 756), ((1, 4), 733), ((2, 6), 688)] -> pairs [(1, 4), (2, 6), (3, 8)]
+pair (1, 4) size lag 1 share 0.983 n 118
+pair (2, 6) size lag 2 share 1.0 n 117
+pair (3, 8) size lag 3 share 0.992 n 122
+network input lags 8 ticks 257
+rules [[1, 4, 1], [2, 6, 2], [3, 8, 3]] -> models/rules.json
