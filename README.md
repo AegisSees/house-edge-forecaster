@@ -89,7 +89,7 @@ Prediction takes about 15 minutes on 2 cores. The competition data is not includ
 
 Team of three for TAMU Datathon 2026:
 
-- **V** ([AegisSees](https://github.com/AegisSees)): GRU ensemble, Bayesian rule model, gated blend, episode-latent correction and the round-two refit pipeline (`houseedge/`, `predict.py`, `fit_rules.py`, `training/`).
+- **Alp Kiziltas** ([AegisSees](https://github.com/AegisSees)): GRU ensemble, Bayesian rule model, gated blend, episode-latent correction and the round-two refit pipeline (`houseedge/`, `predict.py`, `fit_rules.py`, `training/`).
 - **Frank Atienza**: Bayesian state filter (`partner/`).
 - **Andy Tran**: Bayesian logistic model with rule flips and an episode latent (`partner2/`).
 
