@@ -31,7 +31,7 @@ P(payout = x) = P(win) * P(size = x | win)
 
 - **GRU ensemble (backbone).** 13 recurrent networks (2 stacked GRU layers, hidden size 128) predict the win chance from one-hot payouts at lags 1 to 8, the other machines' win rates, machine type, signal and tick, plus causal running statistics such as conditional win rates per lag and lag pair. Trained in PyTorch, served as a pure NumPy float64 forward pass, averaged in log-odds space.
 - **Exact Bayesian rule model.** `houseedge/joint_model.py` computes the posterior over every (lag pair, direction) hypothesis, combining win evidence from 32-tick chunks (robust to flips) and size evidence from winning payouts. It supplies the payout-size distribution and a structured win estimate for short histories.
-- **Two Bayesian teammate models** (see [Team](#team)): a Bayesian state filter (`partner/`) and Bayesian logistic models with abrupt and gradual rule flips plus an episode latent (`partner2/`).
+- **Two Bayesian teammate models** (see [Team](#team)): a Bayesian state filter by Frank Atienza (`partner/`) and Bayesian logistic models with abrupt and gradual rule flips plus an episode latent by Andy Tran (`partner2/`).
 
 ### 3. Gated blend
 
@@ -87,4 +87,10 @@ Prediction takes about 15 minutes on 2 cores. The competition data is not includ
 
 ## Team
 
-Built by [AegisSees](https://github.com/AegisSees) with two teammates as a team of three. The GRU ensemble, rule model, blend and episode-latent correction are in `houseedge/`, `predict.py` and `training/`. The two Bayesian models in `partner/` and `partner2/` were built by the teammates and are included, with their own READMEs, because the final entry blends all three.
+Team of three for TAMU Datathon 2026:
+
+- **V** ([AegisSees](https://github.com/AegisSees)): GRU ensemble, Bayesian rule model, gated blend, episode-latent correction and the round-two refit pipeline (`houseedge/`, `predict.py`, `fit_rules.py`, `training/`).
+- **Frank Atienza**: Bayesian state filter (`partner/`).
+- **Andy Tran**: Bayesian logistic model with rule flips and an episode latent (`partner2/`).
+
+Each teammate's folder keeps its own README.
